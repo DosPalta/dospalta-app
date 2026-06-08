@@ -368,6 +368,37 @@ tbody td { padding:12px 14px; font-size:13.5px; vertical-align:middle; font-fami
   margin-top: 20px;
   font-family: var(--fb);
 }
+
+/* VOZ */
+.voice-btn {
+  background: none;
+  border: 2px solid var(--borde);
+  border-radius: 50%;
+  width: 42px; height: 42px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  color: var(--texto2);
+}
+.voice-btn:hover { border-color: var(--naranja); color: var(--naranja); }
+.voice-btn.escuchando {
+  border-color: #c0392b;
+  background: #fdeaea;
+  color: #c0392b;
+  animation: pulsar 1s infinite;
+}
+@keyframes pulsar {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+.voice-status {
+  font-size: 12px;
+  color: var(--texto2);
+  font-family: var(--fb);
+  min-height: 18px;
+  margin-top: 4px;
+}
 </style>
 </head>
 <body>
@@ -616,7 +647,7 @@ tbody td { padding:12px 14px; font-size:13.5px; vertical-align:middle; font-fami
       <div class="field"><label>Nombre *</label><input type="text" id="p-nombre" placeholder="Ej: Manta andina de lana"></div>
       <div class="fg2">
         <div class="field"><label>Categoría</label>
-          <select id="p-cat"><option value="">Sin categoría</option><option>Decoración textil</option><option>Moda alpaca</option><option>Indumentaria</option><option>Bolsos y mochilas</option><option>Marroquinería</option><option>Accesorios</option><option>Instrumentos</option><option>Souvenirs</option><option>Mate y accesorios</option><option>Papelería</option><option>Otro</option></select>
+          <select id="p-cat"><option value="">Sin categoría</option><option>Indumentaria</option><option>Calzado y Medias</option><option>Accesorios</option><option>Textil y Deco</option><option>Souvenirs</option><option>Artesanías</option></select>
         </div>
         <div class="field"><label>Stock inicial</label><input type="number" id="p-stock" placeholder="0" min="0"></div>
       </div>
@@ -637,16 +668,26 @@ tbody td { padding:12px 14px; font-size:13.5px; vertical-align:middle; font-fami
 
 <div class="overlay" id="ov-venta">
   <div class="modal">
-    <div class="modal-head"><h2>Registrar venta</h2><button class="close-x" onclick="cerrar('ov-venta')">✕</button></div>
+    <div class="modal-head"><h2 id="venta-modal-title">Registrar venta</h2><button class="close-x" onclick="cerrar('ov-venta')">✕</button></div>
     <div class="modal-body">
       <div class="field">
         <label>Producto *</label>
         <div id="v-search-container">
-          <button type="button" onclick="abrirVenta()" style="width:100%;padding:14px;background:var(--fondo);border:2px dashed var(--borde);border-radius:10px;font-size:15px;font-family:var(--fb);color:var(--texto2);cursor:pointer;text-align:left">
-            📦 Tocar para elegir producto...
-          </button>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="text" id="v-prod-search-text"
+              placeholder="🔍 Escribí para buscar producto..."
+              oninput="filtrarProdBusq(this.value)"
+              autocomplete="off" autocorrect="off" autocapitalize="off"
+              style="flex:1;padding:10px 13px;border:1.5px solid var(--borde);border-radius:10px;font-size:14px;font-family:var(--fb);color:var(--texto);background:var(--fondo);outline:none"
+              onfocus="this.style.borderColor='var(--naranja)';this.style.background='#fff'"
+              onblur="this.style.borderColor='var(--borde)';this.style.background='var(--fondo)'">
+            <button class="voice-btn" id="voice-venta-btn" onclick="iniciarVozVenta()" title="Buscar por voz">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            </button>
+          </div>
+          <div class="voice-status" id="voice-venta-status"></div>
+          <div id="v-prod-lista" style="max-height:200px;overflow-y:auto;border:1.5px solid var(--borde);border-radius:10px;display:none;background:var(--blanco);margin-top:4px"></div>
           <input type="hidden" id="v-prod-search">
-          <div id="v-prod-lista" style="display:none"></div>
         </div>
         <input type="hidden" id="v-prod">
         <div id="v-prod-elegido" style="display:none;padding:8px 12px;background:var(--verde-light);border-radius:8px;font-size:13px;color:var(--verde);font-family:var(--fb);font-weight:600;margin-top:6px"></div>
@@ -663,13 +704,13 @@ tbody td { padding:12px 14px; font-size:13.5px; vertical-align:middle; font-fami
       </div>
       <div class="field"><label>Notas</label><input type="text" id="v-notas" placeholder="Opcional..."></div>
     </div>
-    <div class="modal-foot"><button class="btn btn-ghost" onclick="cerrar('ov-venta')">Cancelar</button><button class="btn btn-primary" onclick="guardarVenta()">Registrar venta</button></div>
+    <input type="hidden" id="v-edit-id"><div class="modal-foot"><button class="btn btn-ghost" onclick="cerrar('ov-venta')">Cancelar</button><button class="btn btn-primary" onclick="guardarVenta()" id="v-save-btn">Registrar venta</button></div>
   </div>
 </div>
 
 <div class="overlay" id="ov-mov">
   <div class="modal">
-    <div class="modal-head"><h2>Nuevo movimiento</h2><button class="close-x" onclick="cerrar('ov-mov')">✕</button></div>
+    <div class="modal-head"><h2 id="mov-modal-title">Nuevo movimiento</h2><button class="close-x" onclick="cerrar('ov-mov')">✕</button></div>
     <div class="modal-body">
       <div class="fg2">
         <div class="field"><label>Tipo *</label><select id="m-tipo"><option value="gasto">Gasto</option><option value="compra">Compra de mercadería</option><option value="ingreso">Ingreso extra</option></select></div>
@@ -681,7 +722,7 @@ tbody td { padding:12px 14px; font-size:13.5px; vertical-align:middle; font-fami
         <div class="field"><label>Notas</label><input type="text" id="m-notas" placeholder="Opcional..."></div>
       </div>
     </div>
-    <div class="modal-foot"><button class="btn btn-ghost" onclick="cerrar('ov-mov')">Cancelar</button><button class="btn btn-primary" onclick="guardarMov()">Guardar</button></div>
+    <input type="hidden" id="m-edit-id"><div class="modal-foot"><button class="btn btn-ghost" onclick="cerrar('ov-mov')">Cancelar</button><button class="btn btn-primary" onclick="guardarMov()" id="m-save-btn">Guardar</button></div>
   </div>
 </div>
 
@@ -706,11 +747,17 @@ tbody td { padding:12px 14px; font-size:13.5px; vertical-align:middle; font-fami
       <span id="buscar-titulo" style="font-size:16px;font-weight:700;color:var(--texto);font-family:var(--fb);flex:1">Elegí un producto</span>
       <button onclick="cerrarBuscar()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--texto2)">✕</button>
     </div>
-    <input type="text" id="buscar-inp"
-      placeholder="🔍 Escribí para buscar..."
-      oninput="onBuscarInput(this.value)"
-      autocomplete="off" autocorrect="off" autocapitalize="off"
-      style="width:100%;padding:10px 14px;border:2px solid var(--naranja);border-radius:10px;font-size:16px;font-family:var(--fb);color:var(--texto);background:#fff;outline:none">
+    <div style="display:flex;gap:8px;align-items:center">
+      <input type="text" id="buscar-inp"
+        placeholder="🔍 Escribí para buscar..."
+        oninput="onBuscarInput(this.value)"
+        autocomplete="off" autocorrect="off" autocapitalize="off"
+        style="flex:1;padding:10px 14px;border:2px solid var(--naranja);border-radius:10px;font-size:16px;font-family:var(--fb);color:var(--texto);background:#fff;outline:none">
+      <button class="voice-btn" id="voice-search-btn" onclick="iniciarVozBusqueda()" title="Buscar por voz">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+      </button>
+    </div>
+    <div class="voice-status" id="voice-status"></div>
   </div>
   <div class="buscar-lista" id="buscar-lista"></div>
 </div>
@@ -1070,7 +1117,32 @@ function renderCat() {
 // ════════════════════════════
 // VENTA
 // ════════════════════════════
+function editarVenta(id) {
+  const v = DB.ventas.find(x => x.id === id);
+  if (!v) return;
+  document.getElementById('v-edit-id').value = id;
+  document.getElementById('venta-modal-title').textContent = 'Editar venta';
+  document.getElementById('v-save-btn').textContent = 'Guardar cambios';
+  document.getElementById('v-prod').value = v.prodId;
+  document.getElementById('v-prod-search').value = '';
+  document.getElementById('v-search-container').style.display = 'none';
+  const elegido = document.getElementById('v-prod-elegido');
+  elegido.textContent = '✓ ' + v.prodNombre + (v.variante ? ' · ' + v.variante : '');
+  elegido.style.display = 'block';
+  document.getElementById('v-cant').value = v.cant;
+  document.getElementById('v-precio').value = v.precio;
+  document.getElementById('v-fecha').value = v.fecha;
+  document.getElementById('v-canal').value = v.canal;
+  document.getElementById('v-quien').value = v.quien;
+  document.getElementById('v-notas').value = v.notas || '';
+  document.getElementById('v-var-f').style.display = 'none';
+  abrir('ov-venta');
+}
+
 function abrirVenta() {
+  document.getElementById('v-edit-id').value = '';
+  document.getElementById('venta-modal-title').textContent = 'Registrar venta';
+  document.getElementById('v-save-btn').textContent = 'Registrar venta';
   if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
     // Mobile: pantalla completa de búsqueda
     mostrarCategorias();
@@ -1079,6 +1151,8 @@ function abrirVenta() {
     return;
   }
   document.getElementById('v-prod-search').value = '';
+  const stxt = document.getElementById('v-prod-search-text');
+  if (stxt) stxt.value = '';
   document.getElementById('v-prod-lista').style.display = 'none';
   document.getElementById('v-prod-lista').innerHTML = '';
   document.getElementById('v-prod').value = '';
@@ -1143,24 +1217,44 @@ function guardarVenta() {
   const precio = parseFloat(document.getElementById('v-precio').value) || 0;
   const fecha = document.getElementById('v-fecha').value || hoy();
   const variante = document.getElementById('v-var-f').style.display !== 'none' ? document.getElementById('v-var').value : '';
-  const vid = uid();
-  DB.ventas.push({
-    id: vid, prodId: pid, prodNombre: prod.nombre,
-    variante, cant, precio, total: cant*precio,
-    canal: document.getElementById('v-canal').value,
-    quien: document.getElementById('v-quien').value,
-    notas: document.getElementById('v-notas').value,
-    fecha
-  });
-  prod.stock = Math.max(0, prod.stock - cant);
-  DB.movimientos.push({
-    id: uid(), tipo: 'venta',
-    desc: `Venta: ${prod.nombre}${variante?' · '+variante:''}`,
-    monto: cant*precio, fecha,
-    notas: document.getElementById('v-canal').value + ' — ' + document.getElementById('v-quien').value
-  });
+  const editId = document.getElementById('v-edit-id').value;
+  const canal = document.getElementById('v-canal').value;
+  const quien = document.getElementById('v-quien').value;
+
+  if (editId) {
+    // Editar venta existente
+    const idx = DB.ventas.findIndex(v => v.id === editId);
+    if (idx > -1) {
+      const ventaVieja = DB.ventas[idx];
+      // Restaurar stock del producto anterior
+      const prodViejo = DB.productos.find(p => p.id === ventaVieja.prodId);
+      if (prodViejo) prodViejo.stock += ventaVieja.cant;
+      // Actualizar venta
+      DB.ventas[idx] = { ...ventaVieja, prodId: pid, prodNombre: prod.nombre, variante, cant, precio, total: cant*precio, canal, quien, notas: document.getElementById('v-notas').value, fecha };
+      // Descontar stock nuevo
+      prod.stock = Math.max(0, prod.stock - cant);
+    }
+    toast('✓ Venta actualizada');
+  } else {
+    // Nueva venta
+    const vid = uid();
+    DB.ventas.push({
+      id: vid, prodId: pid, prodNombre: prod.nombre,
+      variante, cant, precio, total: cant*precio,
+      canal, quien,
+      notas: document.getElementById('v-notas').value,
+      fecha
+    });
+    prod.stock = Math.max(0, prod.stock - cant);
+    DB.movimientos.push({
+      id: uid(), tipo: 'venta',
+      desc: `Venta: ${prod.nombre}${variante?' · '+variante:''}`,
+      monto: cant*precio, fecha,
+      notas: canal + ' — ' + quien
+    });
+    toast('✓ Venta registrada');
+  }
   guardar(); cerrar('ov-venta'); renderVen(); updateBadges();
-  toast('✓ Venta registrada');
 }
 function elimVenta(id) {
   if (!confirm('¿Eliminar esta venta?')) return;
@@ -1200,7 +1294,10 @@ function renderVen() {
     <td style="font-weight:500;color:var(--verde)">${fmt(v.total)}</td>
     <td><span class="badge b-venta">${v.canal}</span></td>
     <td>${v.quien}</td>
-    <td><button class="icon-btn del" onclick="elimVenta('${v.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button></td>
+    <td style="white-space:nowrap">
+      <button class="icon-btn" onclick="editarVenta('${v.id}')" title="Editar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+      <button class="icon-btn del" onclick="elimVenta('${v.id}')" title="Eliminar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button>
+    </td>
   </tr>`).join('');
 }
 
@@ -1208,20 +1305,48 @@ function renderVen() {
 // MOVIMIENTO
 // ════════════════════════════
 function abrirMov() {
+  document.getElementById('m-edit-id').value = '';
+  document.getElementById('mov-modal-title').textContent = 'Nuevo movimiento';
+  document.getElementById('m-save-btn').textContent = 'Guardar';
   document.getElementById('m-fecha').value = hoy();
   ['m-desc','m-monto','m-notas'].forEach(f=>document.getElementById(f).value='');
+  abrir('ov-mov');
+}
+
+function editarMov(id) {
+  const mv = DB.movimientos.find(m => m.id === id);
+  if (!mv) return;
+  document.getElementById('m-edit-id').value = id;
+  document.getElementById('mov-modal-title').textContent = 'Editar movimiento';
+  document.getElementById('m-save-btn').textContent = 'Guardar cambios';
+  document.getElementById('m-tipo').value = mv.tipo;
+  document.getElementById('m-fecha').value = mv.fecha;
+  document.getElementById('m-desc').value = mv.desc;
+  document.getElementById('m-monto').value = mv.monto;
+  document.getElementById('m-notas').value = mv.notas || '';
   abrir('ov-mov');
 }
 function guardarMov() {
   const desc = document.getElementById('m-desc').value.trim();
   if (!desc) { toast('⚠️ Escribí una descripción'); return; }
-  DB.movimientos.push({
-    id: uid(), tipo: document.getElementById('m-tipo').value,
-    desc, monto: parseFloat(document.getElementById('m-monto').value)||0,
+  const editId = document.getElementById('m-edit-id').value;
+  const mov = {
+    id: editId || uid(),
+    tipo: document.getElementById('m-tipo').value,
+    desc,
+    monto: parseFloat(document.getElementById('m-monto').value)||0,
     fecha: document.getElementById('m-fecha').value||hoy(),
     notas: document.getElementById('m-notas').value
-  });
-  guardar(); cerrar('ov-mov'); renderFin(); toast('✓ Movimiento guardado');
+  };
+  if (editId) {
+    const idx = DB.movimientos.findIndex(m => m.id === editId);
+    if (idx > -1) DB.movimientos[idx] = mov;
+    toast('✓ Movimiento actualizado');
+  } else {
+    DB.movimientos.push(mov);
+    toast('✓ Movimiento guardado');
+  }
+  guardar(); cerrar('ov-mov'); renderFin();
 }
 function elimMov(id) {
   if (!confirm('¿Eliminar?')) return;
@@ -1262,7 +1387,10 @@ function renderFin() {
     <td>${mv.desc}</td>
     <td style="font-weight:500;color:${esI(mv)?'var(--verde)':'#c0392b'}">${esI(mv)?'+':'-'}${fmt(mv.monto)}</td>
     <td style="color:var(--texto2);font-size:12px">${mv.notas||'—'}</td>
-    <td><button class="icon-btn del" onclick="elimMov('${mv.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button></td>
+    <td style="white-space:nowrap">
+      <button class="icon-btn" onclick="editarMov('${mv.id}')" title="Editar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+      <button class="icon-btn del" onclick="elimMov('${mv.id}')" title="Eliminar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button>
+    </td>
   </tr>`).join('');
 }
 
@@ -1559,6 +1687,157 @@ function resetActividad() {
     iniciarTimerLogout();
   }
 })();
+
+// ════════════════════════════
+// RECONOCIMIENTO DE VOZ
+// ════════════════════════════
+let recognition = null;
+let voiceMode = null; // 'busqueda' | 'venta'
+
+function initVoice() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) return null;
+  const r = new SpeechRecognition();
+  r.lang = 'es-AR';
+  r.continuous = false;
+  r.interimResults = false;
+  return r;
+}
+
+function iniciarVozBusqueda() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) { toast('Tu navegador no soporta voz'); return; }
+  voiceMode = 'busqueda';
+  const btn = document.getElementById('voice-search-btn');
+  const status = document.getElementById('voice-status');
+  if (recognition) recognition.stop();
+  recognition = initVoice();
+  recognition.onstart = () => {
+    btn.classList.add('escuchando');
+    status.textContent = '🎤 Escuchando...';
+  };
+  recognition.onresult = (e) => {
+    const texto = e.results[0][0].transcript;
+    const inp = document.getElementById('buscar-inp');
+    if (inp) { inp.value = texto; onBuscarInput(texto); }
+    const inpD = document.getElementById('v-prod-search-text');
+    if (inpD) { inpD.value = texto; filtrarProdBusq(texto); }
+    status.textContent = '✓ "' + texto + '"';
+    btn.classList.remove('escuchando');
+  };
+  recognition.onerror = () => {
+    btn.classList.remove('escuchando');
+    status.textContent = '⚠️ No se escuchó nada, intentá de nuevo';
+  };
+  recognition.onend = () => { btn.classList.remove('escuchando'); };
+  recognition.start();
+}
+
+function iniciarVozVenta() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) { toast('Tu navegador no soporta voz'); return; }
+  voiceMode = 'venta';
+  const btn = document.getElementById('voice-venta-btn');
+  const status = document.getElementById('voice-venta-status');
+  if (recognition) recognition.stop();
+  recognition = initVoice();
+  recognition.onstart = () => {
+    btn.classList.add('escuchando');
+    status.textContent = '🎤 Decí: "Sweater Tokapu, dos unidades, treinta mil"';
+  };
+  recognition.onresult = (e) => {
+    const texto = e.results[0][0].transcript.toLowerCase();
+    btn.classList.remove('escuchando');
+    status.textContent = '⏳ Procesando: "' + texto + '"';
+    procesarComandoVoz(texto);
+  };
+  recognition.onerror = () => {
+    btn.classList.remove('escuchando');
+    status.textContent = '⚠️ No se escuchó nada, intentá de nuevo';
+  };
+  recognition.onend = () => { btn.classList.remove('escuchando'); };
+  recognition.start();
+}
+
+function procesarComandoVoz(texto) {
+  const status = document.getElementById('voice-venta-status');
+  
+  // Extraer cantidad: "dos unidades", "2 unidades", "una", "tres", etc.
+  const numerosTexto = { 'una':1,'un':1,'uno':1,'dos':2,'tres':3,'cuatro':4,'cinco':5,'seis':6,'siete':7,'ocho':8,'nueve':9,'diez':10 };
+  let cantidad = 1;
+  const matchCant = texto.match(/(\d+|una?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s*unidades?/i);
+  if (matchCant) {
+    cantidad = parseInt(matchCant[1]) || numerosTexto[matchCant[1].toLowerCase()] || 1;
+  }
+
+  // Extraer precio: "treinta mil", "30000", "30.000"
+  const numeros = { 'mil':1000,'dos mil':2000,'tres mil':3000,'cinco mil':5000,'diez mil':10000,'quince mil':15000,'veinte mil':20000,'veinticinco mil':25000,'treinta mil':30000,'treinta y cinco mil':35000,'cuarenta mil':40000,'cincuenta mil':50000 };
+  let precio = 0;
+  for (const [k,v] of Object.entries(numeros)) {
+    if (texto.includes(k)) { precio = v; break; }
+  }
+  if (!precio) {
+    const matchP = texto.match(/(\d[\d.,]*)\s*(pesos?)?/);
+    if (matchP) precio = parseFloat(matchP[1].replace(/\./g,'').replace(',','.')) || 0;
+  }
+
+  // Extraer canal
+  let canal = 'Feria';
+  if (/mercado libre|mercadolibre/i.test(texto)) canal = 'Mercado Libre';
+  else if (/instagram/i.test(texto)) canal = 'Instagram';
+  else if (/whatsapp/i.test(texto)) canal = 'WhatsApp';
+  else if (/local/i.test(texto)) canal = 'Local';
+
+  // Buscar producto por nombre
+  // Limpiar el texto de cantidades y precios para buscar el producto
+  let textoProd = texto
+    .replace(/(\d+|una?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s*unidades?/gi, '')
+    .replace(/(\d[\d.,]*)\s*pesos?/gi, '')
+    .replace(/mil\s*pesos?/gi, '')
+    .replace(/(treinta|veinte|cuarenta|cincuenta|quince|diez|cinco|tres|dos)\s*mil/gi, '')
+    .replace(/feria|local|instagram|whatsapp|mercado libre/gi, '')
+    .trim();
+
+  const matches = DB.productos.filter(p => {
+    const nombre = p.nombre.toLowerCase();
+    const palabras = textoProd.split(' ').filter(w => w.length > 2);
+    return palabras.some(w => nombre.includes(w));
+  }).slice(0, 5);
+
+  if (!matches.length) {
+    status.textContent = '⚠️ No encontré el producto. Intentá de nuevo.';
+    return;
+  }
+
+  // Mostrar confirmación
+  mostrarConfirmacionVoz(matches[0], cantidad, precio, canal, texto);
+}
+
+function mostrarConfirmacionVoz(prod, cant, precio, canal, textoOriginal) {
+  const total = cant * precio;
+  const msg = `¿Confirmar venta?\n\nProducto: ${prod.nombre}\nCantidad: ${cant}\nPrecio: $${precio.toLocaleString('es-AR')}\nTotal: $${total.toLocaleString('es-AR')}\nCanal: ${canal}`;
+  if (confirm(msg)) {
+    // Pre-llenar el formulario
+    document.getElementById('v-prod').value = prod.id;
+    document.getElementById('v-search-container').style.display = 'none';
+    const elegido = document.getElementById('v-prod-elegido');
+    elegido.textContent = '✓ ' + prod.nombre;
+    elegido.style.display = 'block';
+    document.getElementById('v-cant').value = cant;
+    document.getElementById('v-precio').value = precio;
+    document.getElementById('v-fecha').value = hoy();
+    document.getElementById('v-canal').value = canal;
+    document.getElementById('v-quien').value = usuario;
+    document.getElementById('v-var-f').style.display = 'none';
+    document.getElementById('voice-venta-status').textContent = '✓ Listo para confirmar';
+    // Si precio está completo, guardar directo
+    if (precio > 0) {
+      guardarVenta();
+    }
+  } else {
+    document.getElementById('voice-venta-status').textContent = 'Cancelado. Intentá de nuevo.';
+  }
+}
 </script>
 </body>
 </html>
