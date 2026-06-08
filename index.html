@@ -508,10 +508,18 @@ tbody td { padding:12px 14px; font-size:13.5px; vertical-align:middle; font-fami
       </div>
     </div>
     <div class="metrics">
-      <div class="metric"><div class="m-label">Ventas hoy</div><div class="m-val green" id="d-hoy">$0</div></div>
+      <div class="metric">
+        <div class="m-label">Ventas hoy</div>
+        <div class="m-val green" id="d-hoy">$0</div>
+        <div class="m-hint" id="d-hoy-u" style="margin-top:4px;font-size:11px;color:var(--texto2)">0 unidades</div>
+      </div>
+      <div class="metric">
+        <div class="m-label">Ventas ayer</div>
+        <div class="m-val" id="d-ayer">$0</div>
+        <div class="m-hint" id="d-ayer-u" style="margin-top:4px;font-size:11px;color:var(--texto2)">0 unidades</div>
+      </div>
       <div class="metric"><div class="m-label">Este mes</div><div class="m-val" id="d-mes">$0</div></div>
       <div class="metric"><div class="m-label">Balance mes</div><div class="m-val" id="d-bal">$0</div></div>
-      <div class="metric"><div class="m-label">Stock total</div><div class="m-val orange" id="d-stock">0</div></div>
     </div>
     <div style="display:grid;gap:16px;" id="dash-grid">
       <div class="panel"><div class="panel-head"><span class="panel-title">Últimas ventas</span></div><div id="dash-v-list"></div></div>
@@ -1397,20 +1405,36 @@ function renderFin() {
 // ════════════════════════════
 // DASHBOARD
 // ════════════════════════════
+function ayer() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().split('T')[0];
+}
+
 function renderDash() {
-  const t = hoy(), m = mesMes();
-  const dH = DB.ventas.filter(v=>v.fecha===t).reduce((a,v)=>a+v.total,0);
-  const dM = DB.ventas.filter(v=>v.fecha.startsWith(m)).reduce((a,v)=>a+v.total,0);
+  const t = hoy(), a = ayer(), m = mesMes();
+  // Hoy
+  const ventasHoy = DB.ventas.filter(v=>v.fecha===t);
+  const dH = ventasHoy.reduce((acc,v)=>acc+v.total,0);
+  const uH = ventasHoy.reduce((acc,v)=>acc+v.cant,0);
+  // Ayer
+  const ventasAyer = DB.ventas.filter(v=>v.fecha===a);
+  const dA = ventasAyer.reduce((acc,v)=>acc+v.total,0);
+  const uA = ventasAyer.reduce((acc,v)=>acc+v.cant,0);
+  // Mes
+  const dM = DB.ventas.filter(v=>v.fecha.startsWith(m)).reduce((acc,v)=>acc+v.total,0);
   const ing = DB.movimientos.filter(mv=>mv.fecha.startsWith(m)&&(mv.tipo==='venta'||mv.tipo==='ingreso')).reduce((a,mv)=>a+mv.monto,0);
   const eg = DB.movimientos.filter(mv=>mv.fecha.startsWith(m)&&(mv.tipo==='gasto'||mv.tipo==='compra')).reduce((a,mv)=>a+mv.monto,0);
   const bal = ing-eg;
-  const stk = DB.productos.reduce((a,p)=>a+p.stock,0);
+
   document.getElementById('d-hoy').textContent = fmt(dH);
+  document.getElementById('d-hoy-u').textContent = uH + (uH === 1 ? ' unidad' : ' unidades');
+  document.getElementById('d-ayer').textContent = fmt(dA);
+  document.getElementById('d-ayer-u').textContent = uA + (uA === 1 ? ' unidad' : ' unidades');
   document.getElementById('d-mes').textContent = fmt(dM);
   const be = document.getElementById('d-bal');
   be.textContent = fmt(Math.abs(bal));
   be.className = 'm-val '+(bal>=0?'green':'red');
-  document.getElementById('d-stock').textContent = stk;
 
   const icons = {venta:'🛍️',gasto:'💸',compra:'📦',ingreso:'💵'};
   const aic = {venta:'ai-v',gasto:'ai-g',compra:'ai-c',ingreso:'ai-v'};
