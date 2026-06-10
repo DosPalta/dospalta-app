@@ -571,9 +571,18 @@ tbody td { padding:12px 14px; font-size:13.5px; vertical-align:middle; font-fami
       <button class="chip active" onclick="filtrarVentas('todas',this)">Todas</button>
       <button class="chip" onclick="filtrarVentas('hoy',this)">Hoy</button>
       <button class="chip" onclick="filtrarVentas('mes',this)">Este mes</button>
+      <button class="chip" id="chip-fecha-ven" onclick="activarFiltroFecha()">📅 Elegir día</button>
+      <input type="date" id="ven-fecha-sel" style="display:none;padding:6px 10px;border:1.5px solid var(--naranja);border-radius:99px;font-size:12px;font-family:var(--fb);color:var(--texto);background:var(--blanco);cursor:pointer" onchange="filtrarVentasFecha(this.value)">
       <div class="search-wrap">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" placeholder="Buscar..." oninput="buscarVenta(this.value)">
+      </div>
+    </div>
+    <!-- Resumen del día seleccionado -->
+    <div id="v-resumen-dia" style="display:none;background:var(--naranja);color:#fff;border-radius:14px;padding:16px 20px;margin-bottom:16px;display:none">
+      <div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;opacity:0.8;margin-bottom:4px;font-family:var(--fb);font-weight:700" id="v-resumen-dia-label">Resumen del día</div>
+      <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap">
+        <div><div style="font-family:'Fredoka',sans-serif;font-size:32px;font-weight:600" id="v-resumen-dia-total">$0</div><div style="font-size:12px;opacity:0.85" id="v-resumen-dia-units">0 unidades · 0 ventas</div></div>
       </div>
     </div>
     <div class="panel"><div class="tbl-wrap"><table>
@@ -839,6 +848,7 @@ let DB = { productos: [], ventas: [], movimientos: [] };
 let varT = [];
 let catF = 'todas', venF = 'todas', movF = 'todos';
 let venBusq = '', prodBusq = '';
+let venFechaElegida = '';
 let usuario = 'Ale';
 let firebaseDB = null;
 let modoLocal = false;
@@ -1340,10 +1350,30 @@ function elimVenta(id) {
   DB.ventas = DB.ventas.filter(v => v.id !== id);
   guardar(); renderVen(); toast('Venta eliminada');
 }
+function activarFiltroFecha() {
+  // Mostrar el input de fecha y poner la fecha de hoy como valor inicial
+  const inp = document.getElementById('ven-fecha-sel');
+  inp.style.display = 'inline-block';
+  inp.value = hoy();
+  filtrarVentasFecha(hoy());
+}
+
+function filtrarVentasFecha(fecha) {
+  venF = 'fecha';
+  venFechaElegida = fecha;
+  document.querySelectorAll('#pg-ventas .chips .chip').forEach(b => b.classList.remove('active'));
+  document.getElementById('chip-fecha-ven').classList.add('active');
+  renderVen();
+}
+
 function filtrarVentas(f, btn) {
   venF = f;
+  venFechaElegida = '';
   document.querySelectorAll('#pg-ventas .chips .chip').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
+  // Ocultar input de fecha si se elige otro filtro
+  document.getElementById('ven-fecha-sel').style.display = 'none';
+  document.getElementById('v-resumen-dia').style.display = 'none';
   renderVen();
 }
 function buscarVenta(q) { venBusq = q.toLowerCase(); renderVen(); }
@@ -1355,13 +1385,31 @@ function renderVen() {
   document.getElementById('v-hoy').textContent = fmt(dHoy);
   document.getElementById('v-mes').textContent = fmt(dMes);
   document.getElementById('v-hist').textContent = fmt(dTot);
+
   let ventas = [...DB.ventas].reverse();
   if (venF === 'hoy') ventas = ventas.filter(v=>v.fecha===t);
-  if (venF === 'mes') ventas = ventas.filter(v=>v.fecha.startsWith(m));
+  else if (venF === 'mes') ventas = ventas.filter(v=>v.fecha.startsWith(m));
+  else if (venF === 'fecha' && venFechaElegida) ventas = ventas.filter(v=>v.fecha===venFechaElegida);
   if (venBusq) ventas = ventas.filter(v=>v.prodNombre.toLowerCase().includes(venBusq));
+
+  // Resumen del día si hay fecha elegida
+  const resumenEl = document.getElementById('v-resumen-dia');
+  if (venF === 'fecha' && venFechaElegida) {
+    const totalDia = ventas.reduce((a,v)=>a+v.total,0);
+    const unidadesDia = ventas.reduce((a,v)=>a+v.cant,0);
+    const [y,mo,d] = venFechaElegida.split('-');
+    const fechaLabel = new Date(venFechaElegida+'T12:00:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
+    document.getElementById('v-resumen-dia-label').textContent = fechaLabel.charAt(0).toUpperCase()+fechaLabel.slice(1);
+    document.getElementById('v-resumen-dia-total').textContent = fmt(totalDia);
+    document.getElementById('v-resumen-dia-units').textContent = `${unidadesDia} unidad${unidadesDia!==1?'es':''} · ${ventas.length} venta${ventas.length!==1?'s':''}`;
+    resumenEl.style.display = 'block';
+  } else {
+    resumenEl.style.display = 'none';
+  }
+
   const tb = document.getElementById('ven-tbody');
   if (!ventas.length) {
-    tb.innerHTML = `<tr><td colspan="9"><div class="empty"><span class="e-icon">🛍️</span><div class="e-title">Sin ventas registradas</div>Registrá tu primera venta</div></td></tr>`;
+    tb.innerHTML = `<tr><td colspan="9"><div class="empty"><span class="e-icon">🛍️</span><div class="e-title">Sin ventas${venF==='fecha'&&venFechaElegida?' para este día':' registradas'}</div>${venF==='fecha'&&venFechaElegida?'No hay ventas registradas para la fecha seleccionada':'Registrá tu primera venta'}</div></td></tr>`;
     return;
   }
   tb.innerHTML = ventas.map(v=>`<tr>
