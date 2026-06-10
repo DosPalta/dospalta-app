@@ -461,6 +461,10 @@ tbody td { padding:12px 14px; font-size:13.5px; vertical-align:middle; font-fami
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
       Finanzas
     </button>
+    <button class="sb-item" onclick="goTo('pedidos',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
+      Pedidos
+    </button>
     <div class="sb-label">Sistema</div>
     <button class="sb-item" onclick="goTo('config',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
@@ -606,6 +610,46 @@ tbody td { padding:12px 14px; font-size:13.5px; vertical-align:middle; font-fami
     </table></div></div>
   </div>
 
+  <!-- PEDIDOS -->
+  <div id="pg-pedidos" class="page">
+    <div class="pg-header">
+      <div><div class="pg-title">Pedidos a Proveedores</div><div class="pg-sub">Armá un listado para enviar por WhatsApp</div></div>
+      <button class="btn btn-primary" id="gen-pdf-btn" onclick="generarPedidoPDF()" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:15px;height:15px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        Generar PDF
+      </button>
+    </div>
+
+    <!-- Buscador + filtros -->
+    <div class="chips" id="ped-chips">
+      <button class="chip active" onclick="filtrarPedCat('todas',this)">Todas</button>
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" placeholder="Buscar producto..." oninput="buscarPedProd(this.value)" id="ped-buscar">
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr;gap:16px;" id="ped-layout">
+      <!-- Lista de productos para seleccionar -->
+      <div class="panel" id="ped-lista-panel">
+        <div class="panel-head"><span class="panel-title">Elegí los productos</span><span style="font-size:12px;color:var(--texto2)">Hacé clic para agregar al pedido</span></div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th style="width:50px">Foto</th><th>Producto</th><th>Categoría</th><th>Stock</th><th></th></tr></thead>
+          <tbody id="ped-prod-tbody"></tbody>
+        </table></div>
+      </div>
+
+      <!-- Pedido armado -->
+      <div class="panel" id="ped-armado-panel" style="display:none">
+        <div class="panel-head">
+          <span class="panel-title">📋 Pedido armado</span>
+          <button class="btn btn-ghost btn-sm" onclick="limpiarPedido()">Limpiar todo</button>
+        </div>
+        <div id="ped-items-list" style="padding:0 18px 18px"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- CONFIG -->
   <div id="pg-config" class="page">
     <div class="pg-header"><div><div class="pg-title">Configuración</div><div class="pg-sub">Sincronización y datos</div></div></div>
@@ -642,6 +686,7 @@ tbody td { padding:12px 14px; font-size:13.5px; vertical-align:middle; font-fami
   <button class="bn-item active" onclick="goTo('dashboard',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Inicio</button>
   <button class="bn-item" onclick="goTo('catalogo',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>Catálogo<span class="bn-badge" id="mob-nb-cat" style="display:none">0</span></button>
   <button class="bn-item" onclick="goTo('ventas',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17"/><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/></svg>Ventas</button>
+  <button class="bn-item" onclick="goTo('pedidos',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>Pedidos</button>
   <button class="bn-item" onclick="goTo('finanzas',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Finanzas</button>
   <button class="bn-item" onclick="goTo('config',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Config</button>
 </nav>
@@ -669,6 +714,21 @@ tbody td { padding:12px 14px; font-size:13.5px; vertical-align:middle; font-fami
         <div class="var-tags" id="p-var-tags"></div>
       </div>
       <div class="field"><label>Notas</label><textarea id="p-notas" placeholder="Proveedor, origen, detalles..."></textarea></div>
+      <div class="field">
+        <label>Foto del producto</label>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <img id="p-foto-preview" src="" alt="" style="display:none;width:80px;height:80px;object-fit:cover;border-radius:10px;border:1.5px solid var(--borde)">
+          <div>
+            <label class="btn btn-ghost btn-sm" style="cursor:pointer">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              Subir foto
+              <input type="file" id="p-foto-inp" accept="image/*" style="display:none" onchange="previewFoto(this)">
+            </label>
+            <button class="btn btn-ghost btn-sm" id="p-foto-clear-btn" onclick="limpiarFoto()" style="display:none;margin-left:8px;color:#c0392b">Quitar foto</button>
+          </div>
+        </div>
+        <input type="hidden" id="p-foto">
+      </div>
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="cerrar('ov-prod')">Cancelar</button><button class="btn btn-primary" onclick="guardarProd()">Guardar producto</button></div>
   </div>
@@ -947,7 +1007,7 @@ function goTo(page, el) {
   document.getElementById('pg-'+page).classList.add('active');
   if (el) el.classList.add('active');
   // sync both navs
-  const map = { dashboard:'dash', catalogo:'cat', ventas:'ven', finanzas:'fin', config:'cfg' };
+  const map = { dashboard:'dash', catalogo:'cat', ventas:'ven', finanzas:'fin', config:'cfg', pedidos:'ped' };
   const key = map[page];
   if (key) {
     const mob = document.getElementById('bn-'+key);
@@ -959,6 +1019,7 @@ function goTo(page, el) {
   if (page === 'catalogo') renderCat();
   if (page === 'ventas') renderVen();
   if (page === 'finanzas') renderFin();
+  if (page === 'pedidos') renderPedidos();
 }
 
 // ════════════════════════════
@@ -1003,6 +1064,9 @@ function abrirProd(id) {
   document.getElementById('prod-title').textContent = 'Nuevo producto';
   ['p-nombre','p-stock','p-costo','p-precio','p-notas'].forEach(f => document.getElementById(f).value = '');
   document.getElementById('p-cat').value = '';
+  document.getElementById('p-foto').value = '';
+  document.getElementById('p-foto-preview').style.display = 'none';
+  document.getElementById('p-foto-clear-btn').style.display = 'none';
   renderVarTags();
   if (id) {
     const p = DB.productos.find(x => x.id === id);
@@ -1017,6 +1081,12 @@ function abrirProd(id) {
     document.getElementById('p-notas').value = p.notas || '';
     varT = [...(p.variantes || [])];
     renderVarTags();
+    if (p.foto) {
+      document.getElementById('p-foto').value = p.foto;
+      document.getElementById('p-foto-preview').src = p.foto;
+      document.getElementById('p-foto-preview').style.display = 'block';
+      document.getElementById('p-foto-clear-btn').style.display = 'inline-flex';
+    }
   }
   abrir('ov-prod');
 }
@@ -1034,6 +1104,7 @@ function guardarProd() {
     precio: parseFloat(document.getElementById('p-precio').value) || 0,
     variantes: [...varT],
     notas: document.getElementById('p-notas').value.trim(),
+    foto: document.getElementById('p-foto').value || '',
     creado: eid ? (DB.productos.find(p=>p.id===eid)||{}).creado || hoy() : hoy()
   };
   if (eid) {
@@ -1713,8 +1784,221 @@ function resetActividad() {
 })();
 
 // ════════════════════════════
-// RECONOCIMIENTO DE VOZ
+// FOTOS DE PRODUCTOS
 // ════════════════════════════
+function previewFoto(input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  // Comprimir a max 400px para no saturar Firebase
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      const MAX = 200;
+      let w = img.width, h = img.height;
+      if (w > h) { if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; } }
+      else { if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; } }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const b64 = canvas.toDataURL('image/jpeg', 0.65);
+      document.getElementById('p-foto').value = b64;
+      document.getElementById('p-foto-preview').src = b64;
+      document.getElementById('p-foto-preview').style.display = 'block';
+      document.getElementById('p-foto-clear-btn').style.display = 'inline-flex';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function limpiarFoto() {
+  document.getElementById('p-foto').value = '';
+  document.getElementById('p-foto-preview').src = '';
+  document.getElementById('p-foto-preview').style.display = 'none';
+  document.getElementById('p-foto-clear-btn').style.display = 'none';
+  document.getElementById('p-foto-inp').value = '';
+}
+
+// ════════════════════════════
+// PEDIDOS A PROVEEDORES
+// ════════════════════════════
+let pedidoItems = []; // [{id, nombre, cat, cantPedida, notas, foto}]
+let pedCatF = 'todas';
+let pedBusq = '';
+
+function renderPedidos() {
+  renderPedChips();
+  renderPedProdLista();
+  renderPedArmado();
+}
+
+function renderPedChips() {
+  const cats = ['todas', ...new Set(DB.productos.map(p => p.cat || 'Sin categoría').filter(Boolean))];
+  const chips = document.getElementById('ped-chips');
+  const sw = chips.querySelector('.search-wrap');
+  chips.innerHTML = '';
+  cats.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'chip' + (c === pedCatF ? ' active' : '');
+    btn.textContent = c === 'todas' ? 'Todas' : c;
+    btn.onclick = () => filtrarPedCat(c, btn);
+    chips.appendChild(btn);
+  });
+  chips.appendChild(sw);
+}
+
+function filtrarPedCat(cat, btn) {
+  pedCatF = cat;
+  document.querySelectorAll('#ped-chips .chip').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderPedProdLista();
+}
+
+function buscarPedProd(q) { pedBusq = q.toLowerCase(); renderPedProdLista(); }
+
+function renderPedProdLista() {
+  let prods = DB.productos;
+  if (pedCatF !== 'todas') prods = prods.filter(p => (p.cat||'Sin categoría') === pedCatF);
+  if (pedBusq) prods = prods.filter(p => p.nombre.toLowerCase().includes(pedBusq));
+
+  const tb = document.getElementById('ped-prod-tbody');
+  if (!prods.length) {
+    tb.innerHTML = `<tr><td colspan="5"><div class="empty"><span class="e-icon">📦</span><div class="e-title">Sin productos</div></div></td></tr>`;
+    return;
+  }
+  tb.innerHTML = prods.map(p => {
+    const enPedido = pedidoItems.find(x => x.id === p.id);
+    const sc = p.stock === 0 ? 'b-zero' : p.stock <= 3 ? 'b-low' : 'b-ok';
+    const fotoHtml = p.foto
+      ? `<img src="${p.foto}" style="width:40px;height:40px;object-fit:cover;border-radius:7px;border:1px solid var(--borde)">`
+      : `<div style="width:40px;height:40px;border-radius:7px;border:1.5px dashed var(--borde);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--texto2)">📷</div>`;
+    return `<tr style="${enPedido ? 'background:var(--verde-light)' : ''}">
+      <td>${fotoHtml}</td>
+      <td><strong style="font-weight:500">${p.nombre}</strong>${p.notas?`<br><span style="font-size:11px;color:var(--texto2)">${p.notas}</span>`:''}</td>
+      <td>${p.cat?`<span class="badge b-cat">${p.cat}</span>`:'—'}</td>
+      <td><span class="badge ${sc}">${p.stock} u.</span></td>
+      <td style="white-space:nowrap">
+        ${enPedido
+          ? `<button class="btn btn-ghost btn-sm" style="color:#c0392b" onclick="quitarDePedido('${p.id}')">✕ Quitar</button>`
+          : `<button class="btn btn-green btn-sm" onclick="agregarAPedido('${p.id}')">+ Agregar</button>`
+        }
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function agregarAPedido(id) {
+  if (pedidoItems.find(x => x.id === id)) return;
+  const p = DB.productos.find(x => x.id === id);
+  if (!p) return;
+  pedidoItems.push({ id: p.id, nombre: p.nombre, cat: p.cat || '', foto: p.foto || '', cantPedida: 1, notas: '' });
+  renderPedProdLista();
+  renderPedArmado();
+  toast('✓ ' + p.nombre + ' agregado al pedido');
+}
+
+function quitarDePedido(id) {
+  pedidoItems = pedidoItems.filter(x => x.id !== id);
+  renderPedProdLista();
+  renderPedArmado();
+}
+
+function limpiarPedido() {
+  if (!pedidoItems.length) return;
+  if (!confirm('¿Limpiar todo el pedido?')) return;
+  pedidoItems = [];
+  renderPedProdLista();
+  renderPedArmado();
+}
+
+function renderPedArmado() {
+  const panel = document.getElementById('ped-armado-panel');
+  const btn = document.getElementById('gen-pdf-btn');
+  if (!pedidoItems.length) {
+    panel.style.display = 'none';
+    btn.style.display = 'none';
+    return;
+  }
+  panel.style.display = 'block';
+  btn.style.display = 'inline-flex';
+
+  const list = document.getElementById('ped-items-list');
+  list.innerHTML = pedidoItems.map((item, i) => `
+    <div style="display:flex;gap:12px;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--borde)">
+      ${item.foto
+        ? `<img src="${item.foto}" style="width:60px;height:60px;object-fit:cover;border-radius:10px;flex-shrink:0;border:1px solid var(--borde)">`
+        : `<div style="width:60px;height:60px;border-radius:10px;background:var(--fondo2);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">📷</div>`
+      }
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:14px">${item.nombre}</div>
+        ${item.cat ? `<div style="font-size:12px;color:var(--texto2);margin-bottom:6px">${item.cat}</div>` : ''}
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <label style="font-size:12px;color:var(--texto2)">Cantidad:</label>
+          <input type="number" min="1" value="${item.cantPedida}"
+            style="width:60px;padding:4px 8px;border:1.5px solid var(--borde);border-radius:7px;font-size:13px;font-family:var(--fb)"
+            onchange="pedidoItems[${i}].cantPedida = parseInt(this.value)||1">
+          <input type="text" placeholder="Notas (color, talle...)" value="${item.notas}"
+            style="flex:1;min-width:120px;padding:4px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:13px;font-family:var(--fb)"
+            oninput="pedidoItems[${i}].notas = this.value">
+        </div>
+      </div>
+      <button class="icon-btn del" onclick="quitarDePedido('${item.id}')" title="Quitar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+  `).join('');
+}
+
+function generarPedidoPDF() {
+  if (!pedidoItems.length) { toast('⚠️ El pedido está vacío'); return; }
+
+  // Construir HTML para imprimir
+  const fecha = new Date().toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' });
+  let html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Pedido Dos Palta ${fecha}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; padding: 32px; color: #1c1c1a; }
+    h1 { font-size: 22px; color: #ee5500; margin-bottom: 4px; }
+    .sub { font-size: 13px; color: #888; margin-bottom: 24px; }
+    .item { display: flex; gap: 16px; align-items: flex-start; padding: 16px 0; border-bottom: 1px solid #e4e2db; page-break-inside: avoid; }
+    .item img { width: 90px; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid #e4e2db; flex-shrink: 0; }
+    .noimg { width: 90px; height: 90px; border-radius: 8px; background: #f0eeea; display: flex; align-items: center; justify-content: center; font-size: 30px; flex-shrink: 0; }
+    .info { flex: 1; }
+    .nombre { font-size: 16px; font-weight: bold; margin-bottom: 4px; }
+    .cat { font-size: 12px; color: #ee5500; margin-bottom: 8px; }
+    .detalle { font-size: 13px; color: #444; }
+    .cant { font-weight: bold; color: #008e33; }
+    @media print { body { padding: 16px; } }
+  </style>
+  </head><body>
+  <h1>📋 Pedido — Dos Palta</h1>
+  <div class="sub">Fecha: ${fecha} · Total: ${pedidoItems.length} producto${pedidoItems.length!==1?'s':''}</div>`;
+
+  pedidoItems.forEach((item, i) => {
+    const imgHtml = item.foto
+      ? `<img src="${item.foto}" alt="${item.nombre}">`
+      : `<div class="noimg">📷</div>`;
+    html += `<div class="item">
+      ${imgHtml}
+      <div class="info">
+        <div class="nombre">${i+1}. ${item.nombre}</div>
+        ${item.cat ? `<div class="cat">${item.cat}</div>` : ''}
+        <div class="detalle"><span class="cant">Cantidad: ${item.cantPedida}</span>${item.notas ? ` · ${item.notas}` : ''}</div>
+      </div>
+    </div>`;
+  });
+
+  html += `</body></html>`;
+
+  // Abrir ventana de impresión
+  const w = window.open('', '_blank', 'width=800,height=900');
+  w.document.write(html);
+  w.document.close();
+  w.onload = () => { w.focus(); w.print(); };
+  toast('✓ PDF generado — guardá o compartí desde el diálogo de impresión');
+}
+
+
 let recognition = null;
 let voiceMode = null; // 'busqueda' | 'venta'
 
