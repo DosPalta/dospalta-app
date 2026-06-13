@@ -1454,49 +1454,43 @@ function renderVen() {
         <div style="font-size:12px;opacity:0.85">${unidadesRango} unidad${unidadesRango!==1?'es':''} · ${ventas.length} venta${ventas.length!==1?'s':''}</div></div>
       </div></div>`;
     if (!esUnDia && dias.length > 0) {
-      html += `<div class="panel"><div class="panel-head"><span class="panel-title">📆 Ventas por día</span><span style="font-size:12px;color:var(--texto2)">Tocá un día para ver el detalle</span></div><div style="padding:0 18px 12px"><table style="width:100%;font-size:13px"><thead><tr>
-        <th style="text-align:left;padding:8px 0;color:var(--texto2);font-weight:600">Día</th>
-        <th style="text-align:right;padding:8px 0;color:var(--texto2);font-weight:600">Uds.</th>
-        <th style="text-align:right;padding:8px 0;color:var(--texto2);font-weight:600">Ventas</th>
-        <th style="text-align:right;padding:8px 0;color:var(--texto2);font-weight:600">Total</th>
-        <th style="padding:8px 0"></th>
-      </tr></thead><tbody>`;
+      html += `<div class="panel"><div class="panel-head"><span class="panel-title">📆 Ventas por día</span></div><div style="padding:0 12px 12px">`;
       dias.forEach(d => {
         const info = porDia[d];
-        const label = new Date(d+'T12:00:00').toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'}).replace(/^\w/, c=>c.toUpperCase());
+        const label = new Date(d+'T12:00:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'}).replace(/^\w/, c=>c.toUpperCase());
         const esDiaActivo = (venFechaDesde === d && venFechaHasta === d);
-        html += `<tr style="border-top:1px solid var(--borde);${esDiaActivo?'background:var(--naranja-light)':''}">
-          <td style="padding:8px 0;font-weight:500">${label}</td>
-          <td style="text-align:right;padding:8px 0;color:var(--texto2)">${info.cant}</td>
-          <td style="text-align:right;padding:8px 0;color:var(--texto2)">${info.ventas}</td>
-          <td style="text-align:right;padding:8px 0;font-weight:600;color:var(--verde)">${fmt(info.total)}</td>
-          <td style="padding:8px 0 8px 12px">
-            ${esDiaActivo
-              ? `<button class="btn btn-ghost btn-sm" onclick="volverRangoCompleto()" style="font-size:11px">← Volver</button>`
-              : `<button class="btn btn-ghost btn-sm" onclick="verDetallesDia('${d}')" style="font-size:11px;color:var(--naranja)">Ver →</button>`
-            }
-          </td>
-        </tr>`;
+        html += `<div onclick="${esDiaActivo ? 'volverRangoCompleto()' : `verDetallesDia('${d}')`}"
+          style="margin-top:8px;border-radius:12px;padding:12px 14px;cursor:pointer;border:2px solid ${esDiaActivo?'var(--naranja)':'var(--borde)'};background:${esDiaActivo?'var(--naranja-light)':'var(--blanco)'};display:flex;align-items:center;justify-content:space-between;gap:8px;-webkit-tap-highlight-color:transparent">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:13px;color:${esDiaActivo?'var(--naranja)':'var(--texto)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${label}</div>
+            <div style="font-size:12px;color:var(--texto2);margin-top:2px">${info.cant} uds · ${info.ventas} ventas</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-weight:700;font-size:15px;color:var(--verde)">${fmt(info.total)}</div>
+            <div style="font-size:11px;color:${esDiaActivo?'var(--naranja)':'var(--texto2)'};margin-top:2px">${esDiaActivo?'← volver':'ver →'}</div>
+          </div>
+        </div>`;
       });
-      html += '</tbody></table></div></div>';
+      html += '</div></div>';
     }
     if (ranking.length > 0) {
-      html += `<div class="panel"><div class="panel-head"><span class="panel-title">🏆 Más vendidos</span><span style="font-size:12px;color:var(--texto2)">por unidades</span></div><div style="padding:0 18px 12px"><table style="width:100%;font-size:13px"><thead><tr>
-        <th style="text-align:left;padding:8px 0;color:var(--texto2);font-weight:600">#</th>
-        <th style="text-align:left;padding:8px 0;color:var(--texto2);font-weight:600">Producto</th>
-        <th style="text-align:right;padding:8px 0;color:var(--texto2);font-weight:600">Uds.</th>
-        <th style="text-align:right;padding:8px 0;color:var(--texto2);font-weight:600">Total</th>
-      </tr></thead><tbody>`;
+      html += `<div class="panel"><div class="panel-head"><span class="panel-title">🏆 Más vendidos</span><span style="font-size:12px;color:var(--texto2)">por unidades</span></div><div style="padding:0 12px 12px">`;
       ranking.forEach((p, i) => {
-        const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1);
-        html += `<tr style="border-top:1px solid var(--borde)">
+        const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+        const num = medal || `<span style="font-size:12px;font-weight:700;color:var(--texto2);min-width:20px;text-align:center">${i+1}</span>`;
+        html += `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:${i>0?'1px solid var(--borde)':'none'}">
+          <div style="font-size:${medal?'20px':'13px'};min-width:24px;text-align:center">${num}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.nombre}${p.variante?`<span style="font-weight:400;color:var(--texto2)"> · ${p.variante}</span>`:''}</div>
+            <div style="font-size:12px;color:var(--verde);margin-top:1px">${fmt(p.total)}</div>
+          </div>
+          <div style="font-size:18px;font-weight:700;color:var(--naranja);flex-shrink:0">${p.cant} <span style="font-size:11px;font-weight:400;color:var(--texto2)">uds</span></div>
+        </div>`;
           <td style="padding:8px 0;color:var(--texto2)">${medal}</td>
           <td style="padding:8px 0"><strong style="font-weight:500">${p.nombre}</strong>${p.variante?`<span style="font-size:11px;color:var(--texto2);margin-left:4px">· ${p.variante}</span>`:''}</td>
           <td style="text-align:right;padding:8px 0;font-weight:700;color:var(--naranja)">${p.cant}</td>
-          <td style="text-align:right;padding:8px 0;font-weight:500;color:var(--verde)">${fmt(p.total)}</td>
-        </tr>`;
       });
-      html += '</tbody></table></div></div>';
+      html += '</div></div>';
     }
     html += '</div>';
     resumenEl.innerHTML = html;
