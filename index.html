@@ -293,7 +293,7 @@ tbody td { padding:12px 14px; font-size:13.5px; vertical-align:middle; font-fami
   padding: 32px 24px;
 }
 #pg-login.hidden { display: none; }
-.login-logo { width: 200px; height: 200px; object-fit: contain; margin-bottom: 4px; }
+.login-logo { width: 200px; height: 200px; object-fit: contain; margin-bottom: 4px; filter: brightness(0) invert(1); }
 .login-marca {
   font-family: var(--fd);
   font-size: 32px;
@@ -571,20 +571,28 @@ tbody td { padding:12px 14px; font-size:13.5px; vertical-align:middle; font-fami
       <button class="chip active" onclick="filtrarVentas('todas',this)">Todas</button>
       <button class="chip" onclick="filtrarVentas('hoy',this)">Hoy</button>
       <button class="chip" onclick="filtrarVentas('mes',this)">Este mes</button>
-      <button class="chip" id="chip-fecha-ven" onclick="activarFiltroFecha()">📅 Elegir día</button>
-      <input type="date" id="ven-fecha-sel" style="display:none;padding:6px 10px;border:1.5px solid var(--naranja);border-radius:99px;font-size:12px;font-family:var(--fb);color:var(--texto);background:var(--blanco);cursor:pointer" onchange="filtrarVentasFecha(this.value)">
+      <button class="chip" id="chip-fecha-ven" onclick="activarFiltroFecha()">📅 Elegir período</button>
       <div class="search-wrap">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" placeholder="Buscar..." oninput="buscarVenta(this.value)">
       </div>
     </div>
-    <!-- Resumen del día seleccionado -->
-    <div id="v-resumen-dia" style="display:none;background:var(--naranja);color:#fff;border-radius:14px;padding:16px 20px;margin-bottom:16px;display:none">
-      <div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;opacity:0.8;margin-bottom:4px;font-family:var(--fb);font-weight:700" id="v-resumen-dia-label">Resumen del día</div>
-      <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap">
-        <div><div style="font-family:'Fredoka',sans-serif;font-size:32px;font-weight:600" id="v-resumen-dia-total">$0</div><div style="font-size:12px;opacity:0.85" id="v-resumen-dia-units">0 unidades · 0 ventas</div></div>
+    <!-- Selector de rango de fechas -->
+    <div id="ven-rango-panel" style="display:none;background:var(--fondo2);border-radius:14px;padding:14px 18px;margin-bottom:12px;display:none">
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <label style="font-size:12px;color:var(--texto2);font-weight:600">Desde</label>
+          <input type="date" id="ven-fecha-desde" style="padding:5px 10px;border:1.5px solid var(--borde);border-radius:8px;font-size:13px;font-family:var(--fb);color:var(--texto);background:var(--blanco)" onchange="aplicarRangoFechas()">
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <label style="font-size:12px;color:var(--texto2);font-weight:600">Hasta</label>
+          <input type="date" id="ven-fecha-hasta" style="padding:5px 10px;border:1.5px solid var(--borde);border-radius:8px;font-size:13px;font-family:var(--fb);color:var(--texto);background:var(--blanco)" onchange="aplicarRangoFechas()">
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="cerrarRangoFechas()">✕ Cerrar</button>
       </div>
     </div>
+    <!-- Resumen del rango seleccionado -->
+    <div id="v-resumen-dia" style="display:none;margin-bottom:12px">
     <div class="panel"><div class="tbl-wrap"><table>
       <thead><tr><th>Fecha</th><th>Producto</th><th>Variante</th><th>Cant.</th><th>Precio</th><th>Total</th><th>Canal</th><th>Quién</th><th></th></tr></thead>
       <tbody id="ven-tbody"></tbody>
@@ -848,7 +856,7 @@ let DB = { productos: [], ventas: [], movimientos: [] };
 let varT = [];
 let catF = 'todas', venF = 'todas', movF = 'todos';
 let venBusq = '', prodBusq = '';
-let venFechaElegida = '';
+let venFechaDesde = '', venFechaHasta = '';
 let usuario = 'Ale';
 let firebaseDB = null;
 let modoLocal = false;
@@ -1351,28 +1359,48 @@ function elimVenta(id) {
   guardar(); renderVen(); toast('Venta eliminada');
 }
 function activarFiltroFecha() {
-  // Mostrar el input de fecha y poner la fecha de hoy como valor inicial
-  const inp = document.getElementById('ven-fecha-sel');
-  inp.style.display = 'inline-block';
-  inp.value = hoy();
-  filtrarVentasFecha(hoy());
+  const panel = document.getElementById('ven-rango-panel');
+  panel.style.display = 'block';
+  const hoyStr = hoy();
+  const hace7 = new Date(); hace7.setDate(hace7.getDate()-6);
+  const hace7Str = hace7.toISOString().split('T')[0];
+  document.getElementById('ven-fecha-desde').value = hace7Str;
+  document.getElementById('ven-fecha-hasta').value = hoyStr;
+  venF = 'rango';
+  venFechaDesde = hace7Str;
+  venFechaHasta = hoyStr;
+  document.querySelectorAll('#pg-ventas .chips .chip').forEach(b => b.classList.remove('active'));
+  document.getElementById('chip-fecha-ven').classList.add('active');
+  renderVen();
+}
+
+function aplicarRangoFechas() {
+  venFechaDesde = document.getElementById('ven-fecha-desde').value;
+  venFechaHasta = document.getElementById('ven-fecha-hasta').value;
+  if (venFechaDesde && venFechaHasta) { venF = 'rango'; renderVen(); }
+}
+
+function cerrarRangoFechas() {
+  document.getElementById('ven-rango-panel').style.display = 'none';
+  document.getElementById('v-resumen-dia').style.display = 'none';
+  venF = 'todas'; venFechaDesde = ''; venFechaHasta = '';
+  document.querySelectorAll('#pg-ventas .chips .chip').forEach(b => b.classList.remove('active'));
+  document.querySelector('#pg-ventas .chips .chip').classList.add('active');
+  renderVen();
 }
 
 function filtrarVentasFecha(fecha) {
-  venF = 'fecha';
-  venFechaElegida = fecha;
+  venF = 'rango'; venFechaDesde = fecha; venFechaHasta = fecha;
   document.querySelectorAll('#pg-ventas .chips .chip').forEach(b => b.classList.remove('active'));
   document.getElementById('chip-fecha-ven').classList.add('active');
   renderVen();
 }
 
 function filtrarVentas(f, btn) {
-  venF = f;
-  venFechaElegida = '';
+  venF = f; venFechaDesde = ''; venFechaHasta = '';
   document.querySelectorAll('#pg-ventas .chips .chip').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  // Ocultar input de fecha si se elige otro filtro
-  document.getElementById('ven-fecha-sel').style.display = 'none';
+  document.getElementById('ven-rango-panel').style.display = 'none';
   document.getElementById('v-resumen-dia').style.display = 'none';
   renderVen();
 }
@@ -1389,19 +1417,81 @@ function renderVen() {
   let ventas = [...DB.ventas].reverse();
   if (venF === 'hoy') ventas = ventas.filter(v=>v.fecha===t);
   else if (venF === 'mes') ventas = ventas.filter(v=>v.fecha.startsWith(m));
-  else if (venF === 'fecha' && venFechaElegida) ventas = ventas.filter(v=>v.fecha===venFechaElegida);
+  else if (venF === 'rango' && venFechaDesde && venFechaHasta) {
+    ventas = ventas.filter(v => v.fecha >= venFechaDesde && v.fecha <= venFechaHasta);
+  }
   if (venBusq) ventas = ventas.filter(v=>v.prodNombre.toLowerCase().includes(venBusq));
 
-  // Resumen del día si hay fecha elegida
   const resumenEl = document.getElementById('v-resumen-dia');
-  if (venF === 'fecha' && venFechaElegida) {
-    const totalDia = ventas.reduce((a,v)=>a+v.total,0);
-    const unidadesDia = ventas.reduce((a,v)=>a+v.cant,0);
-    const [y,mo,d] = venFechaElegida.split('-');
-    const fechaLabel = new Date(venFechaElegida+'T12:00:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
-    document.getElementById('v-resumen-dia-label').textContent = fechaLabel.charAt(0).toUpperCase()+fechaLabel.slice(1);
-    document.getElementById('v-resumen-dia-total').textContent = fmt(totalDia);
-    document.getElementById('v-resumen-dia-units').textContent = `${unidadesDia} unidad${unidadesDia!==1?'es':''} · ${ventas.length} venta${ventas.length!==1?'s':''}`;
+  if (venF === 'rango' && venFechaDesde && venFechaHasta) {
+    const totalRango = ventas.reduce((a,v)=>a+v.total,0);
+    const unidadesRango = ventas.reduce((a,v)=>a+v.cant,0);
+    const porDia = {};
+    ventas.forEach(v => {
+      if (!porDia[v.fecha]) porDia[v.fecha] = { total:0, cant:0, ventas:0 };
+      porDia[v.fecha].total += v.total;
+      porDia[v.fecha].cant += v.cant;
+      porDia[v.fecha].ventas++;
+    });
+    const dias = Object.keys(porDia).sort().reverse();
+    const esUnDia = venFechaDesde === venFechaHasta;
+    const porProd = {};
+    ventas.forEach(v => {
+      const k = v.prodNombre + (v.variante ? '|||' + v.variante : '');
+      if (!porProd[k]) porProd[k] = { nombre: v.prodNombre, variante: v.variante||'', cant:0, total:0 };
+      porProd[k].cant += v.cant;
+      porProd[k].total += v.total;
+    });
+    const ranking = Object.values(porProd).sort((a,b) => b.cant - a.cant).slice(0, 10);
+    let html = '<div style="display:grid;grid-template-columns:1fr;gap:12px">';
+    const tituloRango = esUnDia
+      ? new Date(venFechaDesde+'T12:00:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'}).replace(/^\w/, c=>c.toUpperCase())
+      : `${dias.length} día${dias.length!==1?'s':''} · ${fmtD(venFechaDesde)} → ${fmtD(venFechaHasta)}`;
+    html += `<div style="background:var(--naranja);color:#fff;border-radius:14px;padding:16px 20px">
+      <div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;opacity:0.8;margin-bottom:4px;font-family:var(--fb);font-weight:700">${tituloRango}</div>
+      <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap">
+        <div><div style="font-family:'Fredoka',sans-serif;font-size:32px;font-weight:600">${fmt(totalRango)}</div>
+        <div style="font-size:12px;opacity:0.85">${unidadesRango} unidad${unidadesRango!==1?'es':''} · ${ventas.length} venta${ventas.length!==1?'s':''}</div></div>
+      </div></div>`;
+    if (!esUnDia && dias.length > 0) {
+      html += `<div class="panel"><div class="panel-head"><span class="panel-title">📆 Ventas por día</span></div><div style="padding:0 18px 12px"><table style="width:100%;font-size:13px"><thead><tr>
+        <th style="text-align:left;padding:8px 0;color:var(--texto2);font-weight:600">Día</th>
+        <th style="text-align:right;padding:8px 0;color:var(--texto2);font-weight:600">Uds.</th>
+        <th style="text-align:right;padding:8px 0;color:var(--texto2);font-weight:600">Ventas</th>
+        <th style="text-align:right;padding:8px 0;color:var(--texto2);font-weight:600">Total</th>
+      </tr></thead><tbody>`;
+      dias.forEach(d => {
+        const info = porDia[d];
+        const label = new Date(d+'T12:00:00').toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'}).replace(/^\w/, c=>c.toUpperCase());
+        html += `<tr style="border-top:1px solid var(--borde)">
+          <td style="padding:8px 0;font-weight:500">${label}</td>
+          <td style="text-align:right;padding:8px 0;color:var(--texto2)">${info.cant}</td>
+          <td style="text-align:right;padding:8px 0;color:var(--texto2)">${info.ventas}</td>
+          <td style="text-align:right;padding:8px 0;font-weight:600;color:var(--verde)">${fmt(info.total)}</td>
+        </tr>`;
+      });
+      html += '</tbody></table></div></div>';
+    }
+    if (ranking.length > 0) {
+      html += `<div class="panel"><div class="panel-head"><span class="panel-title">🏆 Más vendidos</span><span style="font-size:12px;color:var(--texto2)">por unidades</span></div><div style="padding:0 18px 12px"><table style="width:100%;font-size:13px"><thead><tr>
+        <th style="text-align:left;padding:8px 0;color:var(--texto2);font-weight:600">#</th>
+        <th style="text-align:left;padding:8px 0;color:var(--texto2);font-weight:600">Producto</th>
+        <th style="text-align:right;padding:8px 0;color:var(--texto2);font-weight:600">Uds.</th>
+        <th style="text-align:right;padding:8px 0;color:var(--texto2);font-weight:600">Total</th>
+      </tr></thead><tbody>`;
+      ranking.forEach((p, i) => {
+        const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1);
+        html += `<tr style="border-top:1px solid var(--borde)">
+          <td style="padding:8px 0;color:var(--texto2)">${medal}</td>
+          <td style="padding:8px 0"><strong style="font-weight:500">${p.nombre}</strong>${p.variante?`<span style="font-size:11px;color:var(--texto2);margin-left:4px">· ${p.variante}</span>`:''}</td>
+          <td style="text-align:right;padding:8px 0;font-weight:700;color:var(--naranja)">${p.cant}</td>
+          <td style="text-align:right;padding:8px 0;font-weight:500;color:var(--verde)">${fmt(p.total)}</td>
+        </tr>`;
+      });
+      html += '</tbody></table></div></div>';
+    }
+    html += '</div>';
+    resumenEl.innerHTML = html;
     resumenEl.style.display = 'block';
   } else {
     resumenEl.style.display = 'none';
@@ -1409,7 +1499,7 @@ function renderVen() {
 
   const tb = document.getElementById('ven-tbody');
   if (!ventas.length) {
-    tb.innerHTML = `<tr><td colspan="9"><div class="empty"><span class="e-icon">🛍️</span><div class="e-title">Sin ventas${venF==='fecha'&&venFechaElegida?' para este día':' registradas'}</div>${venF==='fecha'&&venFechaElegida?'No hay ventas registradas para la fecha seleccionada':'Registrá tu primera venta'}</div></td></tr>`;
+    tb.innerHTML = `<tr><td colspan="9"><div class="empty"><span class="e-icon">🛍️</span><div class="e-title">Sin ventas${venF==='rango'?' para el período':' registradas'}</div>${venF==='rango'?'No hay ventas en las fechas seleccionadas':'Registrá tu primera venta'}</div></td></tr>`;
     return;
   }
   tb.innerHTML = ventas.map(v=>`<tr>
