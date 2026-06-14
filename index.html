@@ -1452,7 +1452,7 @@ function renderVen() {
   if (venF === 'hoy') ventas = ventas.filter(v=>v.fecha===t);
   else if (venF === 'mes') ventas = ventas.filter(v=>v.fecha.startsWith(m));
   else if (venF === 'rango' && venFechaDesde && venFechaHasta) {
-    ventas = ventas.filter(v => v.fecha >= venFechaDesde && v.fecha <= venFechaHasta);
+    ventas = ventas.filter(v => v.fecha >= venFechaDesde && v.fecha <= venFechaHasta + 'T23:59:59');
   }
   if (venBusq) ventas = ventas.filter(v=>v.prodNombre.toLowerCase().includes(venBusq));
 
