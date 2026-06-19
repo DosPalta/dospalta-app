@@ -1001,7 +1001,8 @@ function guardarFirebase() {
   DB.productos.forEach(p => payload.productos[p.id] = p);
   DB.ventas.forEach(v => payload.ventas[v.id] = v);
   DB.movimientos.forEach(m => payload.movimientos[m.id] = m);
-  firebaseDB.ref('dospalta').set(payload);
+  // update() en lugar de set() para no borrar el nodo fotos/
+  firebaseDB.ref('dospalta').update(payload);
 }
 
 function setConnStatus(state, label) {
