@@ -1357,8 +1357,9 @@ function filtrarProdBusq(q) {
   }
   lista.innerHTML = matches.map(p => {
     const sc = p.stock === 0 ? 'color:#c0392b' : p.stock <= 3 ? 'color:#a06000' : 'color:var(--verde)';
-    return `<div onclick="elegirProd('${p.id}')" style="padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--borde);font-size:13px;font-family:var(--fb);display:flex;align-items:center;justify-content:space-between;gap:8px">
-      <div>
+    return `<div onclick="elegirProd('${p.id}')" style="padding:8px 14px;cursor:pointer;border-bottom:1px solid var(--borde);font-size:13px;font-family:var(--fb);display:flex;align-items:center;gap:10px">
+      <div id="vdfoto-${p.id}" style="width:38px;height:38px;border-radius:7px;background:var(--fondo2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">📦</div>
+      <div style="flex:1;min-width:0">
         <div style="font-weight:600;color:var(--texto)">${p.nombre}</div>
         ${p.cat ? `<div style="font-size:11px;color:var(--texto2)">${p.cat}</div>` : ''}
       </div>
@@ -1366,6 +1367,18 @@ function filtrarProdBusq(q) {
     </div>`;
   }).join('');
   lista.style.display = 'block';
+  // Cargar fotos lazy
+  if (firebaseDB) {
+    matches.forEach(p => {
+      firebaseDB.ref('dospalta/fotos/' + p.id).once('value', snap => {
+        const f = snap.val();
+        const el = document.getElementById('vdfoto-' + p.id);
+        if (f && el) {
+          el.outerHTML = `<img id="vdfoto-${p.id}" src="${f}" style="width:38px;height:38px;object-fit:cover;border-radius:7px;flex-shrink:0;border:1px solid var(--borde)">`;
+        }
+      });
+    });
+  }
 }
 
 function elegirProd(id) {
