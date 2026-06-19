@@ -279,6 +279,8 @@ tbody td { padding:12px 14px; font-size:13.5px; vertical-align:middle; font-fami
 .buscar-item-nombre { font-size: 15px; font-weight: 600; color: var(--texto); font-family: var(--fb); }
 .buscar-item-cat { font-size: 12px; color: var(--texto2); margin-top: 2px; font-family: var(--fb); }
 .buscar-item-stock { font-size: 13px; font-weight: 700; flex-shrink: 0; font-family: var(--fb); }
+.buscar-item-foto { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; border: 1px solid var(--borde); flex-shrink: 0; background: var(--fondo2); }
+.buscar-item-foto-ph { width: 44px; height: 44px; border-radius: 8px; background: var(--fondo2); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 20px; }
 .buscar-empty { text-align: center; padding: 48px 20px; color: var(--texto2); font-size: 14px; font-family: var(--fb); }
 
 /* LOGIN */
@@ -1142,10 +1144,22 @@ function abrirProd(id) {
     varT = [...(p.variantes || [])];
     renderVarTags();
     if (p.foto) {
+      // Compatibilidad con fotos viejas en el objeto
       document.getElementById('p-foto').value = p.foto;
       document.getElementById('p-foto-preview').src = p.foto;
       document.getElementById('p-foto-preview').style.display = 'block';
       document.getElementById('p-foto-clear-btn').style.display = 'inline-flex';
+    } else if (firebaseDB) {
+      // Cargar foto desde nodo separado
+      firebaseDB.ref('dospalta/fotos/' + p.id).once('value', snap => {
+        const f = snap.val();
+        if (f) {
+          document.getElementById('p-foto').value = f;
+          document.getElementById('p-foto-preview').src = f;
+          document.getElementById('p-foto-preview').style.display = 'block';
+          document.getElementById('p-foto-clear-btn').style.display = 'inline-flex';
+        }
+      });
     }
   }
   abrir('ov-prod');
@@ -1155,6 +1169,7 @@ function guardarProd() {
   const nombre = document.getElementById('p-nombre').value.trim();
   if (!nombre) { toast('⚠️ El nombre es obligatorio'); return; }
   const eid = document.getElementById('p-id').value;
+  const fotoB64 = document.getElementById('p-foto').value || '';
   const prod = {
     id: eid || uid(),
     nombre,
@@ -1164,7 +1179,6 @@ function guardarProd() {
     precio: parseFloat(document.getElementById('p-precio').value) || 0,
     variantes: [...varT],
     notas: document.getElementById('p-notas').value.trim(),
-    foto: document.getElementById('p-foto').value || '',
     creado: eid ? (DB.productos.find(p=>p.id===eid)||{}).creado || hoy() : hoy()
   };
   if (eid) {
@@ -1172,6 +1186,15 @@ function guardarProd() {
     if (i > -1) DB.productos[i] = prod;
   } else {
     DB.productos.push(prod);
+  }
+  // Guardar foto en nodo separado (bajo demanda)
+  if (firebaseDB) {
+    if (fotoB64) {
+      firebaseDB.ref('dospalta/fotos/' + prod.id).set(fotoB64);
+    } else if (eid) {
+      // Si limpiaron la foto, borrarla
+      firebaseDB.ref('dospalta/fotos/' + prod.id).remove();
+    }
   }
   guardar(); cerrar('ov-prod'); renderCat(); updateBadges();
   toast('✓ Producto guardado');
@@ -1865,12 +1888,25 @@ function mostrarProductosCat(cat) {
   lista.innerHTML = prods.map(p => {
     const sc = p.stock === 0 ? 'color:#c0392b' : p.stock <= 3 ? 'color:#a06000' : 'color:var(--verde)';
     return `<div class="buscar-item" onclick="elegirProdMobile('${p.id}')">
-      <div>
+      <div class="buscar-item-foto-ph" id="bfoto-${p.id}">📦</div>
+      <div style="flex:1;min-width:0">
         <div class="buscar-item-nombre">${p.nombre}</div>
       </div>
       <div class="buscar-item-stock" style="${sc}">${p.stock} u.</div>
     </div>`;
   }).join('');
+  // Cargar fotos lazy
+  if (firebaseDB) {
+    prods.forEach(p => {
+      firebaseDB.ref('dospalta/fotos/' + p.id).once('value', snap => {
+        const f = snap.val();
+        const el = document.getElementById('bfoto-' + p.id);
+        if (f && el) {
+          el.outerHTML = `<img class="buscar-item-foto" id="bfoto-${p.id}" src="${f}">`;
+        }
+      });
+    });
+  }
 }
 
 function buscarAtras() {
@@ -1893,13 +1929,26 @@ function onBuscarInput(q) {
   lista.innerHTML = matches.map(p => {
     const sc = p.stock === 0 ? 'color:#c0392b' : p.stock <= 3 ? 'color:#a06000' : 'color:var(--verde)';
     return `<div class="buscar-item" onclick="elegirProdMobile('${p.id}')">
-      <div>
+      <div class="buscar-item-foto-ph" id="bfoto-${p.id}">📦</div>
+      <div style="flex:1;min-width:0">
         <div class="buscar-item-nombre">${p.nombre}</div>
         <div class="buscar-item-cat">${p.cat||''}</div>
       </div>
       <div class="buscar-item-stock" style="${sc}">${p.stock} u.</div>
     </div>`;
   }).join('');
+  // Cargar fotos lazy
+  if (firebaseDB) {
+    matches.forEach(p => {
+      firebaseDB.ref('dospalta/fotos/' + p.id).once('value', snap => {
+        const f = snap.val();
+        const el = document.getElementById('bfoto-' + p.id);
+        if (f && el) {
+          el.outerHTML = `<img class="buscar-item-foto" id="bfoto-${p.id}" src="${f}">`;
+        }
+      });
+    });
+  }
 }
 
 function elegirProdMobile(id) {
@@ -2083,9 +2132,7 @@ function renderPedProdLista() {
   tb.innerHTML = prods.map(p => {
     const enPedido = pedidoItems.find(x => x.id === p.id);
     const sc = p.stock === 0 ? 'b-zero' : p.stock <= 3 ? 'b-low' : 'b-ok';
-    const fotoHtml = p.foto
-      ? `<img src="${p.foto}" style="width:40px;height:40px;object-fit:cover;border-radius:7px;border:1px solid var(--borde)">`
-      : `<div style="width:40px;height:40px;border-radius:7px;border:1.5px dashed var(--borde);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--texto2)">📷</div>`;
+    const fotoHtml = `<div id="pfoto-${p.id}" style="width:40px;height:40px;border-radius:7px;border:1.5px dashed var(--borde);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--texto2)">📷</div>`;
     return `<tr style="${enPedido ? 'background:var(--verde-light)' : ''}">
       <td>${fotoHtml}</td>
       <td><strong style="font-weight:500">${p.nombre}</strong>${p.notas?`<br><span style="font-size:11px;color:var(--texto2)">${p.notas}</span>`:''}</td>
@@ -2099,13 +2146,33 @@ function renderPedProdLista() {
       </td>
     </tr>`;
   }).join('');
+  // Cargar fotos lazy
+  if (firebaseDB) {
+    prods.forEach(p => {
+      firebaseDB.ref('dospalta/fotos/' + p.id).once('value', snap => {
+        const f = snap.val();
+        const el = document.getElementById('pfoto-' + p.id);
+        if (f && el) {
+          el.outerHTML = `<img id="pfoto-${p.id}" src="${f}" style="width:40px;height:40px;object-fit:cover;border-radius:7px;border:1px solid var(--borde)">`;
+        }
+      });
+    });
+  }
 }
 
 function agregarAPedido(id) {
   if (pedidoItems.find(x => x.id === id)) return;
   const p = DB.productos.find(x => x.id === id);
   if (!p) return;
-  pedidoItems.push({ id: p.id, nombre: p.nombre, cat: p.cat || '', foto: p.foto || '', cantPedida: 1, notas: '' });
+  const item = { id: p.id, nombre: p.nombre, cat: p.cat || '', foto: '', cantPedida: 1, notas: '' };
+  pedidoItems.push(item);
+  // Cargar foto del producto para el PDF
+  if (firebaseDB) {
+    firebaseDB.ref('dospalta/fotos/' + p.id).once('value', snap => {
+      const f = snap.val();
+      if (f) { item.foto = f; renderPedArmado(); }
+    });
+  }
   renderPedProdLista();
   renderPedArmado();
   toast('✓ ' + p.nombre + ' agregado al pedido');
