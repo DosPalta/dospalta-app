@@ -1231,19 +1231,20 @@ function filtrarCat(cat, btn) {
 function buscarProd(q) { prodBusq = q.toLowerCase(); renderCat(); }
 
 function renderCat() {
-  // Rebuild chips
+  // Rebuild chips sin tocar el search-wrap (para no perder el foco del input)
   const cats = ['todas', ...new Set(DB.productos.map(p => p.cat || 'Otro').filter(Boolean))];
   const chips = document.getElementById('cat-chips');
   const sw = chips.querySelector('.search-wrap');
-  chips.innerHTML = '';
+  // Eliminar solo los botones chip, no el search-wrap
+  Array.from(chips.querySelectorAll('.chip')).forEach(b => b.remove());
+  // Insertar chips antes del search-wrap
   cats.forEach(c => {
     const btn = document.createElement('button');
     btn.className = 'chip' + (c === catF ? ' active' : '');
     btn.textContent = c === 'todas' ? 'Todas' : c;
     btn.onclick = () => filtrarCat(c, btn);
-    chips.appendChild(btn);
+    chips.insertBefore(btn, sw);
   });
-  chips.appendChild(sw);
 
   let prods = DB.productos;
   if (catF !== 'todas') prods = prods.filter(p => (p.cat||'Otro') === catF);
