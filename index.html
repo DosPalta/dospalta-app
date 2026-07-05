@@ -1828,11 +1828,44 @@ function procesarImport(inp) {
   r.onload = e => {
     try {
       const data = JSON.parse(e.target.result);
+      // Formato completo (DB entera)
       if (data.productos !== undefined) {
         DB = data;
         guardar(); refreshAll();
         toast('✓ Datos importados');
+        return;
       }
+      // Formato array de productos nuevos
+      if (Array.isArray(data)) {
+        const calzadoKeywords = ['bota','zapatilla','pantufla','sandalia','calzado','zapato'];
+        // Migrar calzados ya existentes a categoría Calzado
+        let migrados = 0;
+        DB.productos.forEach(p => {
+          const n = p.nombre.toLowerCase();
+          if (calzadoKeywords.some(k => n.includes(k)) && p.cat !== 'Calzado') {
+            p.cat = 'Calzado';
+            migrados++;
+          }
+        });
+        // Agregar productos nuevos (evitar duplicados por nombre exacto)
+        const nombresExistentes = DB.productos.map(p => p.nombre.toLowerCase());
+        let agregados = 0, saltados = 0;
+        data.forEach(p => {
+          if (nombresExistentes.includes(p.nombre.toLowerCase())) {
+            saltados++;
+          } else {
+            DB.productos.push(p);
+            agregados++;
+          }
+        });
+        guardar(); refreshAll();
+        let msg = `✓ ${agregados} productos agregados`;
+        if (migrados > 0) msg += `, ${migrados} migrados a Calzado`;
+        if (saltados > 0) msg += ` (${saltados} duplicados ignorados)`;
+        toast(msg);
+        return;
+      }
+      toast('⚠️ Formato de archivo no reconocido');
     } catch(err) { toast('⚠️ Error al leer el archivo'); }
   };
   r.readAsText(file);
