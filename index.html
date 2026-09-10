@@ -855,7 +855,7 @@ tbody td { padding:12px 14px; font-size:13.5px; vertical-align:middle; font-fami
 // ════════════════════════════
 // LOGIN — definido primero para que esté disponible inmediatamente
 // ════════════════════════════
-const APP_VERSION = '2026-09-06-syncfix3';
+const APP_VERSION = '2026-09-10-speedfix1';
 console.log('Dos Palta — versión cargada:', APP_VERSION);
 const PASS = 'ymedia';
 const TIMEOUT_MS = 30 * 60 * 1000;
@@ -978,34 +978,45 @@ function initFirebase(cfg) {
   }
 }
 
+// Aplica el mismo criterio de "no borrar lo local que el servidor todavía no
+// tiene" (ver explicación abajo), pero para UN solo tipo de dato a la vez.
+function aplicarSnapshot(tipo, valorRemoto) {
+  const remoto = valorRemoto ? Object.values(valorRemoto) : [];
+  const remotoIds = new Set(remoto.map(x => x.id));
+  const pendientes = (DB[tipo] || []).filter(x => x && x.id && !remotoIds.has(x.id));
+  DB[tipo] = remoto.concat(pendientes);
+  pendientes.forEach(x => guardarRegistro(tipo, x));
+  guardarLocal();
+  refreshAll();
+  updateBadges();
+}
+
 function sincronizarConFirebase() {
   if (!firebaseDB) return;
-  // Escuchar cambios en tiempo real
-  firebaseDB.ref('dospalta').on('value', snap => {
-    const data = snap.val() || {};
-    // IMPORTANTE: esto ya NO reemplaza DB.productos/ventas/movimientos a ciegas
-    // con lo que diga el servidor. Si un guardado se hizo mientras el
-    // dispositivo tenía mala conexión (típico en el teléfono con datos
-    // móviles), el .set() a Firebase puede fallar en silencio: queda guardado
-    // localmente pero nunca llega al servidor. Antes, la próxima vez que este
-    // listener se disparaba (por ejemplo al reabrir la app), tomaba el
-    // servidor como única verdad y borraba ese registro también de la
-    // memoria local — es lo que viste desaparecer "al iniciar sesión".
-    // Ahora: lo que diga el servidor manda, PERO si hay algo en la memoria
-    // local que el servidor todavía no tiene, no se descarta — se asume que
-    // es un guardado pendiente que no llegó, se mantiene, y se reintenta
-    // subir solo.
-    ['productos','ventas','movimientos'].forEach(tipo => {
-      const remoto = data[tipo] ? Object.values(data[tipo]) : [];
-      const remotoIds = new Set(remoto.map(x => x.id));
-      const pendientes = (DB[tipo] || []).filter(x => x && x.id && !remotoIds.has(x.id));
-      DB[tipo] = remoto.concat(pendientes);
-      pendientes.forEach(x => guardarRegistro(tipo, x));
-    });
-    guardarLocal();
-    refreshAll();
-    updateBadges();
-  });
+  // Escuchar cada tipo de dato POR SEPARADO (no todo el nodo 'dospalta' junto).
+  // Antes había un solo listener sobre 'dospalta' entero: cada vez que se
+  // guardaba UN registro (por ejemplo el producto con el stock actualizado
+  // al vender), ese listener único se disparaba y volvía a descargar TODO
+  // — productos + ventas + movimientos + fotos juntos — aunque solo hubiera
+  // cambiado una cosa chica. Registrar una venta hacía 3 escrituras (venta,
+  // producto, movimiento), y cada una gatillaba una descarga completa: casi
+  // 1 MB transferido por cada venta cargada. Con datos móviles eso se siente
+  // como varios segundos de demora justo en el último click. Escuchando cada
+  // tipo por separado, guardar una venta solo trae de vuelta esos 3 registros
+  // puntuales, no la base entera.
+  // IMPORTANTE (ver aplicarSnapshot): esto ya NO reemplaza cada lista a ciegas
+  // con lo que diga el servidor. Si un guardado se hizo con mala conexión
+  // (típico en el teléfono con datos móviles), el .set() a Firebase puede
+  // fallar en silencio: queda guardado localmente pero nunca llega al
+  // servidor. Antes, la próxima vez que el listener se disparaba (por
+  // ejemplo al reabrir la app), tomaba el servidor como única verdad y
+  // borraba ese registro también de la memoria local. Ahora: lo que diga el
+  // servidor manda, PERO si hay algo en la memoria local que el servidor
+  // todavía no tiene, no se descarta — se asume que es un guardado
+  // pendiente que no llegó, se mantiene, y se reintenta subir solo.
+  firebaseDB.ref('dospalta/productos').on('value', snap => aplicarSnapshot('productos', snap.val()));
+  firebaseDB.ref('dospalta/ventas').on('value', snap => aplicarSnapshot('ventas', snap.val()));
+  firebaseDB.ref('dospalta/movimientos').on('value', snap => aplicarSnapshot('movimientos', snap.val()));
 }
 
 // Escribe UN solo registro puntual en Firebase (no reenvía el resto de la lista).
@@ -1021,6 +1032,22 @@ function guardarRegistro(tipo, obj) {
   if (modoLocal || !firebaseDB || !obj || !obj.id) return;
   firebaseDB.ref('dospalta/' + tipo + '/' + obj.id).set(obj).catch(err => {
     console.error('Error guardando en Firebase:', tipo, obj.id, err);
+    toast('⚠️ No se pudo guardar en la nube (sin conexión). Se reintentará solo.');
+  });
+}
+
+// Igual que guardarRegistro, pero para varios registros que cambian juntos
+// en una sola acción (por ejemplo: registrar una venta toca la venta, el
+// producto vendido y el movimiento). Se manda como UNA sola escritura
+// multi-ruta en vez de varias separadas, para que cada tipo de dato
+// (productos/ventas/movimientos, escuchados por separado) se actualice una
+// sola vez en vez de una vez por cada escritura individual.
+function guardarRegistros(items) {
+  if (modoLocal || !firebaseDB || !items || !items.length) return;
+  const payload = {};
+  items.forEach(({tipo, obj}) => { if (obj && obj.id) payload['dospalta/' + tipo + '/' + obj.id] = obj; });
+  firebaseDB.ref().update(payload).catch(err => {
+    console.error('Error guardando en Firebase:', err);
     toast('⚠️ No se pudo guardar en la nube (sin conexión). Se reintentará solo.');
   });
 }
@@ -1462,9 +1489,10 @@ function guardarVenta() {
       // Descontar stock nuevo
       prod.stock = Math.max(0, prod.stock - cant);
       // Sincronizar puntualmente: la venta editada, y el/los producto(s) cuyo stock cambió
-      guardarRegistro('ventas', DB.ventas[idx]);
-      if (prodViejo && prodViejo.id !== prod.id) guardarRegistro('productos', prodViejo);
-      guardarRegistro('productos', prod);
+      // (en un solo envío, para no disparar la sincronización 2 o 3 veces)
+      const cambios = [{tipo:'ventas', obj: DB.ventas[idx]}, {tipo:'productos', obj: prod}];
+      if (prodViejo && prodViejo.id !== prod.id) cambios.push({tipo:'productos', obj: prodViejo});
+      guardarRegistros(cambios);
     }
     toast('✓ Venta actualizada');
   } else {
@@ -1486,10 +1514,13 @@ function guardarVenta() {
       notas: canal + ' — ' + quien
     };
     DB.movimientos.push(nuevoMov);
-    // Sincronizar puntualmente: venta nueva, producto (stock descontado) y movimiento nuevo
-    guardarRegistro('ventas', nuevaVenta);
-    guardarRegistro('productos', prod);
-    guardarRegistro('movimientos', nuevoMov);
+    // Sincronizar puntualmente: venta nueva, producto (stock descontado) y movimiento nuevo,
+    // en un solo envío (así solo se dispara 1 vez cada listener, no 3)
+    guardarRegistros([
+      {tipo:'ventas', obj: nuevaVenta},
+      {tipo:'productos', obj: prod},
+      {tipo:'movimientos', obj: nuevoMov}
+    ]);
     toast('✓ Venta registrada');
   }
   guardar(); cerrar('ov-venta'); renderVen(); updateBadges();
